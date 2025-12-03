@@ -63,8 +63,6 @@ func GenerateDotDesktop(options *DotDesktopOptions) error {
 		return fmt.Errorf("name is required")
 	}
 
-	options.Name = normaliseName(options.Name)
-
 	if options.Exec == "" {
 		return fmt.Errorf("exec is required")
 	}
