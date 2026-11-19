@@ -117,7 +117,7 @@ var ErrAutostartNotSupported = errors.New("autostart is not supported on this pl
 type AutostartOptions struct {
 	// Identifier overrides the auto-derived registration ID.
 	//
-	//   macOS:   launchd Label / SMAppService key (reverse-DNS recommended).
+	//   macOS:   launchd Label (reverse-DNS recommended).
 	//   Windows: registry value name under HKCU\…\Run.
 	//   Linux:   .desktop filename (without extension).
 	//
@@ -133,18 +133,16 @@ type AutostartOptions struct {
 
 // AutostartStrategy names the underlying mechanism a registration used.
 //
-// On macOS this distinguishes between SMAppService (bundled .app on macOS 13+)
-// and a LaunchAgent plist (the fallback path). On Windows it is always
+// On macOS this is LaunchAgent. On Windows it is always
 // AutostartStrategyRegistryRun and on Linux always AutostartStrategyXDGAutostart.
 // Empty when AutostartStatus.Enabled is false.
 type AutostartStrategy string
 
 const (
-	AutostartStrategyNone          AutostartStrategy = ""
-	AutostartStrategySMAppService  AutostartStrategy = "smappservice"
-	AutostartStrategyLaunchAgent   AutostartStrategy = "launchagent"
-	AutostartStrategyRegistryRun   AutostartStrategy = "registry-run"
-	AutostartStrategyXDGAutostart  AutostartStrategy = "xdg-autostart"
+	AutostartStrategyNone         AutostartStrategy = ""
+	AutostartStrategyLaunchAgent  AutostartStrategy = "launchagent"
+	AutostartStrategyRegistryRun  AutostartStrategy = "registry-run"
+	AutostartStrategyXDGAutostart AutostartStrategy = "xdg-autostart"
 )
 
 // AutostartStatus describes the current autostart registration.

@@ -7,10 +7,8 @@ package application
 //
 // Platform behaviour:
 //
-//   - macOS 13+ (bundled .app):  SMAppService.mainAppService — works for
-//     sandboxed and Mac-App-Store apps, no TCC automation prompt.
-//   - macOS (older or unbundled): a LaunchAgent plist is written to
-//     ~/Library/LaunchAgents/.
+//   - macOS: a LaunchAgent plist is written to ~/Library/LaunchAgents/
+//     (supports Arguments such as --launch-hidden).
 //   - Windows: a value is added under
 //     HKCU\Software\Microsoft\Windows\CurrentVersion\Run.
 //   - Linux: an .desktop file is written to $XDG_CONFIG_HOME/autostart/

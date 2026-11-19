@@ -4,12 +4,10 @@ package application
 
 import (
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/mac"
@@ -23,79 +21,18 @@ func newAutostartImpl(app *App) autostartImpl {
 	return &darwinAutostart{app: app}
 }
 
-// strategy picks SMAppService when running from a bundled .app on macOS 13+,
-// otherwise the LaunchAgent plist path. Both paths support unbundled binaries
-// (LaunchAgent path) so xbar-style scripts in development still work.
-func (a *darwinAutostart) strategy() AutostartStrategy {
-	if !runningFromAppBundle() {
-		return AutostartStrategyLaunchAgent
-	}
-	if mac.GetBundleID() == "" {
-		return AutostartStrategyLaunchAgent
-	}
-	major, _ := darwinMajorVersion()
-	if major < 13 {
-		return AutostartStrategyLaunchAgent
-	}
-	return AutostartStrategySMAppService
-}
-
 func (a *darwinAutostart) enable(opts AutostartOptions) error {
 	if err := validateAutostartIdentifier(opts.Identifier); err != nil {
 		return err
 	}
-	switch a.strategy() {
-	case AutostartStrategySMAppService:
-		if err := smAppServiceRegister(); err == nil {
-			return nil
-		} else if !errors.Is(err, errSMAppServiceUnavailable) {
-			return fmt.Errorf("SMAppService register: %w", err)
-		}
-		fallthrough
-	default:
-		return a.enableLaunchAgent(opts)
-	}
+	return a.enableLaunchAgent(opts)
 }
 
 func (a *darwinAutostart) disable() error {
-	// Try both paths and merge errors — a previous version may have used
-	// the other strategy.
-	var errs []error
-	if a.strategy() == AutostartStrategySMAppService {
-		if err := smAppServiceUnregister(); err != nil && !errors.Is(err, errSMAppServiceUnavailable) && !errors.Is(err, errSMAppServiceNotRegistered) {
-			errs = append(errs, fmt.Errorf("SMAppService unregister: %w", err))
-		}
-	}
-	if err := a.disableLaunchAgent(); err != nil {
-		errs = append(errs, err)
-	}
-	return errors.Join(errs...)
+	return a.disableLaunchAgent()
 }
 
 func (a *darwinAutostart) status() (AutostartStatus, error) {
-	if a.strategy() == AutostartStrategySMAppService {
-		enabled, err := smAppServiceIsEnabled()
-		// errSMAppServiceRequiresApproval means the user disabled the
-		// login item in System Settings — semantically that's "not
-		// enabled", not a hard error. Treat it like Unavailable so the
-		// LaunchAgent fallback still gets a chance to find a legacy
-		// entry from before the app was bundled.
-		if err != nil &&
-			!errors.Is(err, errSMAppServiceUnavailable) &&
-			!errors.Is(err, errSMAppServiceRequiresApproval) {
-			return AutostartStatus{}, fmt.Errorf("SMAppService status: %w", err)
-		}
-		if enabled {
-			return AutostartStatus{
-				Enabled:  true,
-				Path:     mac.GetBundleID(),
-				Strategy: AutostartStrategySMAppService,
-			}, nil
-		}
-	}
-	// LaunchAgent path: also checked when SMAppService said no, so a
-	// previously-registered LaunchAgent doesn't disappear from view after an
-	// upgrade to a bundled build.
 	path, ok, err := a.findLaunchAgent()
 	if err != nil {
 		return AutostartStatus{}, err
@@ -201,33 +138,6 @@ func (a *darwinAutostart) findLaunchAgent() (string, bool, error) {
 		}
 	}
 	return "", false, nil
-}
-
-// runningFromAppBundle reports whether the current executable lives inside a
-// .app bundle (path ends with .app/Contents/MacOS/<name>).
-func runningFromAppBundle() bool {
-	exe, err := resolvedExecutable()
-	if err != nil {
-		return false
-	}
-	macOSDir := filepath.Dir(exe)
-	contentsDir := filepath.Dir(macOSDir)
-	appDir := filepath.Dir(contentsDir)
-	return filepath.Base(macOSDir) == "MacOS" &&
-		filepath.Base(contentsDir) == "Contents" &&
-		strings.HasSuffix(appDir, ".app")
-}
-
-func darwinMajorVersion() (int, error) {
-	out, err := exec.Command("sw_vers", "-productVersion").Output()
-	if err != nil {
-		return 0, err
-	}
-	ver := strings.TrimSpace(string(out))
-	if i := strings.IndexByte(ver, '.'); i > 0 {
-		ver = ver[:i]
-	}
-	return strconv.Atoi(ver)
 }
 
 // launchctlBootstrap loads a plist into the current GUI session. Best effort —
