@@ -79,12 +79,13 @@ type Chromium struct {
 	compositionHost        *compositionHost
 
 	// Settings
-	Debug                         bool
-	DataPath                      string
-	BrowserPath                   string
-	AdditionalBrowserArgs         []string
-	NonClientRegionSupportEnabled bool
-	CompositionControllerEnabled  bool
+	Debug                                  bool
+	DataPath                               string
+	BrowserPath                            string
+	AdditionalBrowserArgs                  []string
+	AllowSingleSignOnUsingOSPrimaryAccount bool
+	NonClientRegionSupportEnabled          bool
+	CompositionControllerEnabled           bool
 
 	// permissions
 	permissions      map[CoreWebView2PermissionKind]CoreWebView2PermissionState
@@ -254,7 +255,7 @@ func (e *Chromium) EmbedWithError(hwnd uintptr) (err error) {
 		return fmt.Errorf("error getting Webview2 runtime version: %w", err)
 	}
 	browserArgs := strings.Join(e.AdditionalBrowserArgs, " ")
-	if err := createCoreWebView2EnvironmentWithOptions(e.BrowserPath, dataPath, e.envCompleted, browserArgs); err != nil {
+	if err := createCoreWebView2EnvironmentWithOptions(e.BrowserPath, dataPath, e.envCompleted, browserArgs, e.AllowSingleSignOnUsingOSPrimaryAccount); err != nil {
 		return fmt.Errorf("error calling Webview2Loader: %w", err)
 	}
 
